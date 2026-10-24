@@ -6,7 +6,7 @@ Nine stages from here to a deployed portfolio project. Estimates assume one deve
 | --- | --- | --- | --- |
 | 1 | Requirements, diagrams, API plan, screens, roadmap | This folder reviewed and agreed | done |
 | 2 | Repo, workspaces, TypeScript, lint, format, env, shared package skeleton | `npm run typecheck` and `npm run lint` pass on an empty skeleton | done |
-| 3 | Models, auth, tenancy, customers, products, invoices, payments, reports API | API tests green, Swagger served, seed script works | 5 to 7 days |
+| 3 | Models, auth, tenancy, customers, products, invoices, payments, reports API | API tests green, Swagger served, seed script works | done |
 | 4 | Web app on the real API | Every MVP screen works against the API, no mock data | 7 to 10 days |
 | 5 | Expo app on the same API | Android build runs the full loop on a device | 5 to 7 days |
 | 6 | PDF, tax edge cases, numbering under concurrency, payment idempotency | Invoice PDF matches the API to the paisa, tax tests green | 3 to 4 days |

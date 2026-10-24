@@ -20,6 +20,8 @@ export const logger = pino({
       'refreshToken',
       'accessToken',
       'token',
+      'body',
+      'err.body',
     ],
     censor: '[redacted]',
   },

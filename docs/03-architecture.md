@@ -114,7 +114,7 @@ sequenceDiagram
 | Web transport | Refresh token in `httpOnly`, `Secure` in production, `SameSite=Strict`, `Path=/api/v1/auth` cookie |
 | Mobile transport | Refresh token in Expo SecureStore, sent in the request body with header `X-Client-Platform: mobile` |
 | Access transport | `Authorization: Bearer` on both clients, kept in memory only |
-| CSRF | Cookie endpoints are `SameSite=Strict` and reject requests whose `Origin` is not in the allowlist |
+| CSRF | The refresh cookie is `SameSite=Strict` and scoped to `Path=/api/v1/auth`, so a cross-site request never carries it. No other state-changing endpoint reads a cookie, so there is no CSRF surface on the rest of the API |
 | Logout | Revokes the presented refresh token, clears the cookie |
 | Password change | Revokes every refresh token for the user, forces re-login on all devices |
 

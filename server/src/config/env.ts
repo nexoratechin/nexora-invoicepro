@@ -14,6 +14,9 @@ const envSchema = z.object({
   MONGODB_URI: z.string().optional(),
   JWT_ACCESS_SECRET: z.string().min(32).optional(),
   JWT_REFRESH_SECRET: z.string().min(32).optional(),
+  ACCESS_TOKEN_TTL_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  LOGIN_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(100).default(5),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -28,6 +31,32 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+const TEST_FALLBACK_SECRET = 'nexora-test-only-secret-do-not-deploy-0123456789';
+
+function resolveSecret(
+  name: 'JWT_ACCESS_SECRET' | 'JWT_REFRESH_SECRET',
+  value: string | undefined,
+): string {
+  if (value !== undefined) {
+    return value;
+  }
+
+  if (env.NODE_ENV === 'test') {
+    return `${TEST_FALLBACK_SECRET}-${name}`;
+  }
+
+  process.stderr.write(
+    `${name} is missing. Generate one with:\n` +
+      "  node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\"\n",
+  );
+  process.exit(1);
+}
+
+export const secrets = {
+  access: resolveSecret('JWT_ACCESS_SECRET', env.JWT_ACCESS_SECRET),
+  refresh: resolveSecret('JWT_REFRESH_SECRET', env.JWT_REFRESH_SECRET),
+};
 
 /** Origins allowed to call the API from a browser. */
 export const allowedOrigins = env.WEB_ORIGIN.split(',')
