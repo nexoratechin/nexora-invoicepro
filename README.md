@@ -6,7 +6,7 @@ Built by [Nexora Technologies](https://github.com/nexoratechin). Innovate | Auto
 
 ## Status
 
-Stage 6 of 9 is complete. Invoices render to a real PDF, from the server, for web and mobile.
+Stage 7 of 9 is complete. The app is feature complete and the sweep is written up in [docs/09-test-report.md](docs/09-test-report.md). Deployment is next.
 
 Working today:
 
@@ -36,6 +36,7 @@ Not built yet: deployment, the accessibility and security sweep, and a device te
 | [docs/06-screens.md](docs/06-screens.md) | Web and mobile routes, components, brand tokens |
 | [docs/07-roadmap.md](docs/07-roadmap.md) | Nine stages with estimates |
 | [docs/08-api-reference.md](docs/08-api-reference.md) | Every endpoint as implemented, with example calls |
+| [docs/09-test-report.md](docs/09-test-report.md) | What was tested, what passed, what was not run, and the measured numbers |
 
 ## Getting started
 

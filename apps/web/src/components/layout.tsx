@@ -119,6 +119,13 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-mist">
+      <a
+        href="#main-content"
+        className="sr-only rounded-lg bg-navy-900 px-4 py-2 text-sm font-medium text-white focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
+      >
+        Skip to content
+      </a>
+
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-navy-950 lg:flex">
         <BrandBlock />
         <NavItems />
@@ -134,7 +141,7 @@ export function AppLayout() {
               setMenuOpen(false);
             }}
           />
-          <aside className="relative flex h-full w-72 flex-col bg-navy-950">
+          <aside id="mobile-menu" className="relative flex h-full w-72 flex-col bg-navy-950">
             <div className="flex items-center justify-between pr-3">
               <BrandBlock />
               <button
@@ -163,6 +170,8 @@ export function AppLayout() {
           <button
             type="button"
             aria-label="Open menu"
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
             onClick={() => {
               setMenuOpen(true);
             }}
@@ -180,7 +189,7 @@ export function AppLayout() {
           </span>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <main id="main-content" className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
           <Outlet />
         </main>
       </div>
