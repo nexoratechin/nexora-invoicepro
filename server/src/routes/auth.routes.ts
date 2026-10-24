@@ -3,6 +3,7 @@ import { type Request, Router } from 'express';
 import {
   clearRefreshCookie,
   isMobileClient,
+  isTrustedOrigin,
   readRefreshToken,
   setRefreshCookie,
 } from '../lib/cookies.js';
@@ -55,6 +56,10 @@ authRouter.post('/login', loginLimiter, async (req, res) => {
 });
 
 authRouter.post('/refresh', async (req, res) => {
+  if (!isMobileClient(req) && !isTrustedOrigin(req)) {
+    throw new AppError(403, 'FORBIDDEN_ORIGIN', 'This origin is not allowed to refresh a session');
+  }
+
   if (isMobileClient(req)) {
     refreshSchema.parse(req.body);
   }
@@ -72,6 +77,10 @@ authRouter.post('/refresh', async (req, res) => {
 });
 
 authRouter.post('/logout', async (req, res) => {
+  if (!isMobileClient(req) && !isTrustedOrigin(req)) {
+    throw new AppError(403, 'FORBIDDEN_ORIGIN', 'This origin is not allowed to end a session');
+  }
+
   const rawToken = readRefreshToken(req);
 
   if (rawToken !== null) {

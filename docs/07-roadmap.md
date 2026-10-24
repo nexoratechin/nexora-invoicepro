@@ -11,7 +11,7 @@ Nine stages from here to a deployed portfolio project. Estimates assume one deve
 | 5 | Expo app on the same API | Android build runs the full loop on a device | done |
 | 6 | PDF, tax edge cases, numbering under concurrency, payment idempotency | Invoice PDF matches the API to the paisa, tax tests green | done |
 | 7 | Test sweep, security review, responsive checks, accessibility pass | Report in `docs/` listing what is tested and what is not | 3 to 4 days |
-| 8 | Deploy API, database, web; Android build; document iOS steps | A stranger can sign up on the deployed URL | 2 to 3 days |
+| 8 | Deploy API, database, web; Android build; document iOS steps | A stranger can sign up on the deployed URL | prepared, not deployed |
 | 9 | README, screenshots, case study, demo script | Portfolio page ready to send | 2 days |
 
 Total: roughly 30 to 40 working days. The API stage and the web stage are the two long ones. If time runs out, the mobile app is the part to cut, not the tests.
