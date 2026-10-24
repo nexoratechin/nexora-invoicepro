@@ -1,0 +1,19 @@
+import { randomUUID } from 'node:crypto';
+
+import type { RequestHandler } from 'express';
+
+const acceptIncomingId = /^[A-Za-z0-9._-]{8,64}$/;
+
+/**
+ * Every response carries an X-Request-Id, and every error body repeats it so a
+ * user can quote one value and the matching log line can be found.
+ */
+export const requestId: RequestHandler = (req, res, next) => {
+  const incoming = req.header('x-request-id');
+  const id = incoming !== undefined && acceptIncomingId.test(incoming) ? incoming : randomUUID();
+
+  res.locals.requestId = id;
+  res.setHeader('X-Request-Id', id);
+
+  next();
+};
