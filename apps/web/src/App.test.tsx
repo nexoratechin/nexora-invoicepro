@@ -1,69 +1,129 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './App';
 
-function stubFetch(implementation: () => Promise<unknown>): void {
-  vi.stubGlobal('fetch', vi.fn(implementation) as unknown as typeof fetch);
-}
+const session = {
+  user: { id: 'u1', name: 'Demo Owner', email: 'demo@nexora.test', phone: null },
+  business: {
+    id: 'b1',
+    name: 'Nexora Technologies',
+    legalName: 'Nexora Technologies',
+    gstin: '24AAAAA0000A1Z5',
+    stateCode: '24',
+    address: {
+      line1: '',
+      line2: '',
+      city: '',
+      state: '',
+      pincode: '',
+      country: 'India',
+    },
+    phone: '',
+    email: '',
+    website: '',
+    currency: 'INR',
+  },
+  settings: {
+    id: 's1',
+    invoicePrefix: 'NXP',
+    numberSeries: 'INV',
+    defaultPaymentTermsDays: 15,
+    defaultTaxRateBp: 1800,
+    defaultNotes: '',
+    paymentInstructions: '',
+    bankDetails: {
+      accountName: '',
+      accountNumber: '',
+      ifsc: '',
+      bankName: '',
+      upiId: '',
+    },
+    taxInclusivePricing: false,
+  },
+  role: 'owner',
+  accessToken: 'token',
+};
 
-function jsonResponse(body: unknown, status = 200): unknown {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: () => Promise.resolve(body),
-  };
+const dashboard = {
+  range: { from: '2026-10-01', to: '2026-10-24' },
+  counts: { total: 3, paid: 1, unpaid: 1, partial: 1, overdue: 0, draft: 0, void: 0 },
+  revenue: {
+    billedMinor: 10_867_800,
+    collectedMinor: 4_622_600,
+    outstandingMinor: 6_245_200,
+    overdueMinor: 0,
+  },
+  recentInvoices: [],
+  overdueInvoices: [],
+};
+
+type Reply = { status: number; body?: unknown };
+
+function stubFetch(reply: (url: string) => Reply): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) => {
+      const result = reply(String(input));
+
+      return {
+        ok: result.status >= 200 && result.status < 300,
+        status: result.status,
+        json: async () => result.body ?? {},
+      } as Response;
+    }) as unknown as typeof fetch,
+  );
 }
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
 });
 
 describe('App', () => {
-  it('renders the product name and brand mark', () => {
-    stubFetch(() => new Promise(() => undefined));
+  it('sends an anonymous visitor to the sign in screen', async () => {
+    stubFetch((url) => (url.includes('/auth/refresh') ? { status: 401 } : { status: 200 }));
+
     render(<App />);
 
-    expect(screen.getAllByText('Nexora InvoicePro').length).toBeGreaterThan(0);
-    expect(screen.getByRole('img', { name: 'Nexora Technologies' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+    expect(screen.getByText('Demo account')).toBeInTheDocument();
   });
 
-  it('shows the API as connected when health responds', async () => {
-    stubFetch(() =>
-      Promise.resolve(
-        jsonResponse({
-          status: 'ok',
-          service: 'nexora-invoicepro-api',
-          version: '0.1.0',
-          environment: 'test',
-          uptimeSeconds: 12,
-          timestamp: new Date().toISOString(),
-        }),
-      ),
-    );
+  it('restores a session and renders the dashboard', async () => {
+    stubFetch((url) => {
+      if (url.includes('/auth/refresh')) {
+        return { status: 200, body: session };
+      }
+
+      if (url.includes('/dashboard')) {
+        return { status: 200, body: dashboard };
+      }
+
+      return { status: 200, body: { items: [], page: 1, pageSize: 10, total: 0, totalPages: 0 } };
+    });
 
     render(<App />);
 
-    expect(await screen.findByText('Connected')).toBeInTheDocument();
-    expect(screen.getByText('nexora-invoicepro-api')).toBeInTheDocument();
-    expect(screen.getByText('12s')).toBeInTheDocument();
+    expect(await screen.findByText(/Good to see you, Demo/)).toBeInTheDocument();
+    expect(await screen.findByText('Issued invoices')).toBeInTheDocument();
+    expect(await screen.findByText('₹1,08,678.00')).toBeInTheDocument();
   });
 
-  it('explains how to start the API when the request fails', async () => {
-    stubFetch(() => Promise.reject(new Error('Failed to fetch')));
+  it('shows an error state when the dashboard request fails', async () => {
+    stubFetch((url) => {
+      if (url.includes('/auth/refresh')) {
+        return { status: 200, body: session };
+      }
+
+      return {
+        status: 500,
+        body: { error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' } },
+      };
+    });
 
     render(<App />);
 
-    expect(await screen.findByText('Offline')).toBeInTheDocument();
-    expect(screen.getByText(/Start it with/)).toBeInTheDocument();
-  });
-
-  it('reports a non 200 response as offline', async () => {
-    stubFetch(() => Promise.resolve(jsonResponse({ error: 'nope' }, 500)));
-
-    render(<App />);
-
-    expect(await screen.findByText('Offline')).toBeInTheDocument();
-    expect(screen.getByText('The API responded with 500')).toBeInTheDocument();
+    expect(await screen.findByText(/dashboard could not load/i)).toBeInTheDocument();
   });
 });
