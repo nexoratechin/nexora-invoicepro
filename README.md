@@ -6,7 +6,7 @@ Built by [Nexora Technologies](https://github.com/nexoratechin). Innovate | Auto
 
 ## Status
 
-Stage 3 of 9 is complete. The API is finished and tested against a real MongoDB.
+Stage 4 of 9 is complete. The web app is finished and driven end to end against the real API.
 
 Working today:
 
@@ -15,11 +15,12 @@ Working today:
 - Server computed GST with integer paise, CGST/SGST/IGST split, and totals that reconcile to the line.
 - Invoice lifecycle: draft, issue with concurrency safe numbering, duplicate, void with an audit trail.
 - Payments with idempotency, partial payments, balance guards and void.
-- Dashboard and four reports built from stored records.
+- Dashboard and five reports built from stored records.
+- A React web app covering every screen: sign in, register, dashboard, customers, products, invoice editor with live totals, invoice detail with payments and history, reports, settings, not found.
 - OpenAPI 3.1 document and Swagger UI.
 - A seed script that creates a labelled demo business.
 
-Not built yet: web screens for real data, mobile screens, PDF generation, deployment. Those are Stages 4 through 9.
+Not built yet: the PDF, the mobile app, deployment. Those are Stages 5, 6 and 8.
 
 ## Documentation
 
@@ -134,10 +135,15 @@ Last run on 2026-10-24 on Windows 11, Node 22.20.0, npm 11.19.1, MongoDB 8.2.6 f
 | `npm run typecheck` | passes in shared, server, web, mobile |
 | `npm run lint` | passes, no warnings |
 | `npm run format:check` | passes |
-| `npm test` | 207 tests: 62 shared, 141 server, 4 web |
+| `npm test` | 214 tests: 62 shared, 141 server, 11 web |
 | Server suite | real HTTP through Supertest against a real MongoDB process |
 | `npm run seed` | 6 customers, 8 products, 12 invoices, 1 void, 1 draft, 3 overdue |
-| `npm run build` | server emits `dist`, web bundle builds |
+| `npm run build` | server emits `dist`, web bundle builds at 507 kB (149 kB gzipped) |
+| Browser run | signed in as the demo owner, dashboard, invoice detail, recorded a payment through the dialog |
+
+The browser run is the important one. It used the built app against the real API with the real cookie session: sign in, dashboard with live counts, invoice detail with the IGST split, then record a payment and watch the invoice move to Paid, the balance reach zero and a history entry appear.
+
+The web tests cover the session restore path (a stubbed 401 lands on sign in, a stubbed refresh lands on the dashboard), the error state when the dashboard fails, money and date formatting, and the invoice preview maths against the same numbers the server produces.
 
 What the server suite proves, among 141 tests:
 
@@ -152,6 +158,30 @@ What the server suite proves, among 141 tests:
 
 Not verified: the mobile app has not run on a device or emulator yet, and no PDF has been generated. Stage 5 and Stage 6.
 
+## The web app
+
+Screens, all talking to the real API:
+
+| Route | What it does |
+| --- | --- |
+| `/login`, `/register` | Session, with the demo credentials shown on the sign in card |
+| `/dashboard` | Counts, revenue, a collected ratio bar, recent invoices and the overdue queue |
+| `/customers` | Search, status filter, pagination, archive and delete guards |
+| `/customers/new`, `/customers/:id`, `/customers/:id/edit` | Create, view with lifetime stats and invoice history, edit |
+| `/products` | Search, active filter, activate and deactivate |
+| `/products/new`, `/products/:id/edit` | Create and edit with a live GST preview |
+| `/invoices` | Filters for status, payment state and overdue, plus search and pagination |
+| `/invoices/new`, `/invoices/:id/edit` | The editor: customer, dates, place of supply, line items with product prefill, and a sticky totals panel computing with the shared money functions |
+| `/invoices/:id` | Detail with the tax split, items, payments, history, issue, duplicate, void and record payment |
+| `/payments` | Every payment, filters, void with a reason |
+| `/reports` | Summary, revenue by month, GST by rate, outstanding aging, top customers |
+| `/settings` | Business profile, invoice defaults and bank details, your profile, password change |
+
+The access token is held in memory only. A page load calls `POST /auth/refresh`, the httpOnly cookie restores the session, and any 401 triggers one shared refresh for every request in flight. Nothing script-readable is stored in localStorage.
+
+The editor previews totals with the same shared functions the server uses, so the number on screen is the number that will be stored. The server still recomputes everything.
+
+Forms use React Hook Form with Zod schemas that mirror the server rules, through a small resolver written in this repo rather than a package that fought npm's resolver.
 ## Money rules
 
 Amounts are integer paise. Quantities are integer thousandths, so 1.5 units is `1500`. Rates are integer basis points, so 18% is `1800`. Calculations run through `BigInt` and round once per step, half away from zero.
