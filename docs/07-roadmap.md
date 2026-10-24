@@ -9,7 +9,7 @@ Nine stages from here to a deployed portfolio project. Estimates assume one deve
 | 3 | Models, auth, tenancy, customers, products, invoices, payments, reports API | API tests green, Swagger served, seed script works | done |
 | 4 | Web app on the real API | Every MVP screen works against the API, no mock data | done |
 | 5 | Expo app on the same API | Android build runs the full loop on a device | done |
-| 6 | PDF, tax edge cases, numbering under concurrency, payment idempotency | Invoice PDF matches the API to the paisa, tax tests green | 3 to 4 days |
+| 6 | PDF, tax edge cases, numbering under concurrency, payment idempotency | Invoice PDF matches the API to the paisa, tax tests green | done |
 | 7 | Test sweep, security review, responsive checks, accessibility pass | Report in `docs/` listing what is tested and what is not | 3 to 4 days |
 | 8 | Deploy API, database, web; Android build; document iOS steps | A stranger can sign up on the deployed URL | 2 to 3 days |
 | 9 | README, screenshots, case study, demo script | Portfolio page ready to send | 2 days |

@@ -21,7 +21,7 @@ import {
   Skeleton,
   Textarea,
 } from '../components/ui';
-import { apiRequest, errorMessage } from '../lib/api';
+import { apiRequest, downloadInvoicePdf, errorMessage } from '../lib/api';
 import { useCanManage } from '../lib/auth';
 import { formatDate, formatDateTime, money, percent, toRupeeInput, todayIso } from '../lib/format';
 import type { ApiCustomer, ApiInvoice, ApiPayment } from '../lib/invoice';
@@ -46,6 +46,7 @@ export function InvoiceDetailPage() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidReason, setVoidReason] = useState('');
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   if (loading && data === null) {
     return <Skeleton className="h-64 rounded-xl" />;
@@ -99,6 +100,20 @@ export function InvoiceDetailPage() {
     } catch (cause) {
       setFailure(errorMessage(cause));
       setBusy(null);
+    }
+  }
+
+  async function savePdf(): Promise<void> {
+    setPdfBusy(true);
+    setFailure(null);
+
+    try {
+      const name = (invoice.invoiceNumber ?? 'draft-invoice').replace(/[^A-Za-z0-9._-]+/g, '-');
+      await downloadInvoicePdf(invoice.id, `${name}.pdf`);
+    } catch (cause) {
+      setFailure(errorMessage(cause));
+    } finally {
+      setPdfBusy(false);
     }
   }
 
@@ -173,7 +188,13 @@ export function InvoiceDetailPage() {
                   <Copy aria-hidden="true" className="h-4 w-4" />
                   Duplicate
                 </Button>
-                <Button variant="ghost" disabled title="PDF generation arrives in Stage 6">
+                <Button
+                  variant="ghost"
+                  loading={pdfBusy}
+                  onClick={() => {
+                    void savePdf();
+                  }}
+                >
                   <Download aria-hidden="true" className="h-4 w-4" />
                   PDF
                 </Button>

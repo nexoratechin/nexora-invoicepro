@@ -450,6 +450,13 @@ export interface InvoiceDetail {
   payments: object[];
 }
 
+export async function getInvoiceDocument(
+  businessId: Types.ObjectId,
+  invoiceId: string,
+): Promise<InvoiceDocument> {
+  return findScopedInvoice(businessId, invoiceId);
+}
+
 export async function getInvoice(
   businessId: Types.ObjectId,
   invoiceId: string,

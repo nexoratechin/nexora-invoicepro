@@ -177,6 +177,16 @@ Rules worth knowing:
 
 List items include a computed `overdue` boolean. `overdue=true` filters to issued invoices with a balance past the due date.
 
+### PDF
+
+`GET /invoices/:id/pdf` returns the invoice as an attachment, `Content-Disposition: attachment; filename="NXP-2026-27-0007.pdf"`.
+
+- Built from the stored document, including the customer and business snapshots.
+- Integers are formatted in Indian grouping, and the rupee glyph comes from an embedded Noto Sans.
+- A draft or void invoice prints a watermark.
+- Long invoices paginate, repeating the table header.
+- 30 downloads per 5 minutes per IP, then 429.
+- Another business's invoice returns 404, same as every other invoice route.
 ## Payments
 
 | Method | Path | Role |
