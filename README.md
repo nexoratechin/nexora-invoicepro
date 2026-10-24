@@ -6,7 +6,7 @@ Built by [Nexora Technologies](https://github.com/nexoratechin). Innovate | Auto
 
 ## Status
 
-Stage 4 of 9 is complete. The web app is finished and driven end to end against the real API.
+Stage 5 of 9 is complete. Web and mobile both talk to the same API.
 
 Working today:
 
@@ -17,10 +17,11 @@ Working today:
 - Payments with idempotency, partial payments, balance guards and void.
 - Dashboard and five reports built from stored records.
 - A React web app covering every screen: sign in, register, dashboard, customers, products, invoice editor with live totals, invoice detail with payments and history, reports, settings, not found.
+- An Expo React Native app with tab navigation, secure token storage, and the invoice loop on a phone.
 - OpenAPI 3.1 document and Swagger UI.
 - A seed script that creates a labelled demo business.
 
-Not built yet: the PDF, the mobile app, deployment. Those are Stages 5, 6 and 8.
+Not built yet: the PDF, deployment, and a device test of the mobile build. Those are Stages 6 to 8.
 
 ## Documentation
 
@@ -140,10 +141,13 @@ Last run on 2026-10-24 on Windows 11, Node 22.20.0, npm 11.19.1, MongoDB 8.2.6 f
 | `npm run seed` | 6 customers, 8 products, 12 invoices, 1 void, 1 draft, 3 overdue |
 | `npm run build` | server emits `dist`, web bundle builds at 507 kB (149 kB gzipped) |
 | Browser run | signed in as the demo owner, dashboard, invoice detail, recorded a payment through the dialog |
+| `expo export --platform android` | Metro bundled the app to 3 MB of Hermes bytecode with no unresolved imports |
 
 The browser run is the important one. It used the built app against the real API with the real cookie session: sign in, dashboard with live counts, invoice detail with the IGST split, then record a payment and watch the invoice move to Paid, the balance reach zero and a history entry appear.
 
 The web tests cover the session restore path (a stubbed 401 lands on sign in, a stubbed refresh lands on the dashboard), the error state when the dashboard fails, money and date formatting, and the invoice preview maths against the same numbers the server produces.
+
+The mobile app has not been run on a device or emulator. Metro bundled it for Android without an unresolved import, and the TypeScript is clean, but "bundles" is not "works". Treat the mobile build as untested until Stage 7, and do not claim otherwise in the case study.
 
 What the server suite proves, among 141 tests:
 
@@ -182,6 +186,31 @@ The access token is held in memory only. A page load calls `POST /auth/refresh`,
 The editor previews totals with the same shared functions the server uses, so the number on screen is the number that will be stored. The server still recomputes everything.
 
 Forms use React Hook Form with Zod schemas that mirror the server rules, through a small resolver written in this repo rather than a package that fought npm's resolver.
+## The mobile app
+
+An Expo app with Expo Router, not a WebView. Tabs for Home, Invoices, Customers and More, with stacked screens for invoice detail and creation.
+
+| Screen | What it does |
+| --- | --- |
+| Sign in, Register | Session with the mobile refresh flow, demo credentials shown |
+| Home | Counts, revenue with a collected bar, recent and overdue invoices, pull to refresh |
+| Invoices | Filter chips for all, unpaid, overdue and drafts, tap through to detail |
+| Invoice detail | Tax split, items, payments, history, issue, duplicate, void and record a payment |
+| New invoice | Customer picker, product picker or blank lines, quantity, price, GST rate, live totals |
+| Customers | Search, tap through to contact, lifetime value and a shortcut to invoice them |
+| More | Business summary, products list, settings, sign out |
+
+Tokens: the refresh token goes into Expo SecureStore and the access token stays in memory. Every request carries `X-Client-Platform: mobile`, so the API returns the rotated refresh token in the body rather than a cookie. A 401 triggers one shared refresh, then a single retry.
+
+On an Android emulator `localhost` is the emulator itself, so set `EXPO_PUBLIC_API_URL` in `apps/mobile/.env`:
+
+| Target | Value |
+| --- | --- |
+| Android emulator | `http://10.0.2.2:4000/api/v1` |
+| iOS simulator | `http://localhost:4000/api/v1` |
+| Physical phone on the same Wi-Fi | `http://192.168.x.x:4000/api/v1` |
+
+The API already binds `0.0.0.0`, so a phone on the network can reach it.
 ## Money rules
 
 Amounts are integer paise. Quantities are integer thousandths, so 1.5 units is `1500`. Rates are integer basis points, so 18% is `1800`. Calculations run through `BigInt` and round once per step, half away from zero.
