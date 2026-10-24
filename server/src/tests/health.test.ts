@@ -73,6 +73,27 @@ describe('error envelope', () => {
     });
     expect(typeof response.body.error.message).toBe('string');
   });
+
+  it('treats a malformed JSON body as a client error', async () => {
+    const response = await request(app)
+      .post('/api/v1/auth/login')
+      .set('Content-Type', 'application/json')
+      .send('{"email": ')
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_FAILED');
+    expect(response.body.error.message).toBe('The request body is not valid JSON');
+  });
+
+  it('rejects a body larger than 1 MB', async () => {
+    const response = await request(app)
+      .post('/api/v1/auth/login')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ email: 'a'.repeat(1_100_000) }))
+      .expect(413);
+
+    expect(response.body.error.message).toContain('1 MB');
+  });
 });
 
 describe('security middleware', () => {

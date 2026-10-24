@@ -6,40 +6,40 @@ Built by [Nexora Technologies](https://github.com/nexoratechin). Innovate | Auto
 
 ## Status
 
-Stage 2 of 9 is complete. The workspace installs, typechecks, lints, tests and builds.
+Stage 3 of 9 is complete. The API is finished and tested against a real MongoDB.
 
-What exists today:
+Working today:
 
-- A shared package with the integer-paise money engine and GST calculation, covered by 62 tests.
-- An Express 5 API skeleton with helmet, a CORS allowlist, rate limiting, request ids, structured logs, one error envelope and 12 API tests.
-- A React 19 web shell on Vite 8 and Tailwind 4, showing live API health, with 4 component tests.
-- An Expo 58 mobile shell that runs the same money engine and calls the same health endpoint.
+- Authentication with argon2id, short lived access tokens, rotating refresh tokens, reuse detection and revoke-all on password change.
+- Business, settings, customers, products, invoices and payments through a REST API.
+- Server computed GST with integer paise, CGST/SGST/IGST split, and totals that reconcile to the line.
+- Invoice lifecycle: draft, issue with concurrency safe numbering, duplicate, void with an audit trail.
+- Payments with idempotency, partial payments, balance guards and void.
+- Dashboard and four reports built from stored records.
+- OpenAPI 3.1 document and Swagger UI.
+- A seed script that creates a labelled demo business.
 
-What does not exist yet: authentication, database models, screens for real business data, the PDF. Those are Stage 3 onward, as listed in [docs/07-roadmap.md](docs/07-roadmap.md).
+Not built yet: web screens for real data, mobile screens, PDF generation, deployment. Those are Stages 4 through 9.
 
 ## Documentation
 
 | Document | Contents |
 | --- | --- |
-| [docs/01-requirements.md](docs/01-requirements.md) | MVP scope, functional and non-functional requirements, money and rounding policy, acceptance criteria |
-| [docs/02-user-flows.md](docs/02-user-flows.md) | Actors, use case diagram, six end-to-end flows |
-| [docs/03-architecture.md](docs/03-architecture.md) | System and deployment diagrams, request lifecycle, auth design, tenancy rules, repo layout, security controls |
-| [docs/04-database-design.md](docs/04-database-design.md) | ER diagram, collection schemas, indexes, tenant ownership, snapshot strategy, seed data |
-| [docs/05-api-plan.md](docs/05-api-plan.md) | Endpoint tables, request and response shapes, error codes, rate limits |
-| [docs/06-screens.md](docs/06-screens.md) | Web routes, mobile routes, shared components, brand tokens |
-| [docs/07-roadmap.md](docs/07-roadmap.md) | Nine stages with deliverables, acceptance criteria and estimates |
+| [docs/01-requirements.md](docs/01-requirements.md) | MVP scope, requirements, money and rounding policy |
+| [docs/02-user-flows.md](docs/02-user-flows.md) | Actors, use case diagram, end-to-end flows |
+| [docs/03-architecture.md](docs/03-architecture.md) | System, deployment, request lifecycle, auth design, tenancy rules |
+| [docs/04-database-design.md](docs/04-database-design.md) | ER diagram, collections, indexes, snapshot strategy |
+| [docs/05-api-plan.md](docs/05-api-plan.md) | Endpoints, payloads, error codes, rate limits |
+| [docs/06-screens.md](docs/06-screens.md) | Web and mobile routes, components, brand tokens |
+| [docs/07-roadmap.md](docs/07-roadmap.md) | Nine stages with estimates |
+| [docs/08-api-reference.md](docs/08-api-reference.md) | Every endpoint as implemented, with example calls |
 
 ## Getting started
 
-Requirements: Node.js 22.13 or newer, npm 11 or newer, Git.
+Requirements: Node.js 22.13 or newer, npm 11 or newer, Git, and MongoDB (Atlas or a local install).
 
 ```bash
 npm install
-```
-
-Copy the example env files. The API and web app run without edits; the copies exist so secrets never land in a tracked file.
-
-```bash
 cp server/.env.example server/.env
 cp apps/web/.env.example apps/web/.env
 cp apps/mobile/.env.example apps/mobile/.env
@@ -47,67 +47,139 @@ cp apps/mobile/.env.example apps/mobile/.env
 
 On PowerShell use `Copy-Item server/.env.example server/.env` for each file.
 
-Run both the API and the web app:
+Edit `server/.env`:
+
+1. Set `MONGODB_URI`. A local server is `mongodb://127.0.0.1:27017/nexora_invoicepro`; Atlas gives you a `mongodb+srv://` string with the database name at the end.
+2. Generate the two secrets and paste them in:
 
 ```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
+
+The API refuses to start without both secrets, because starting with a default secret is worse than not starting.
+
+Then:
+
+```bash
+npm run seed     # optional demo data
 npm run dev
 ```
 
 - API on http://localhost:4000
+- Swagger UI on http://localhost:4000/api/docs
+- OpenAPI JSON on http://localhost:4000/api/openapi.json
 - Web on http://localhost:5173
 
-Other scripts:
+### Demo account
+
+After `npm run seed`:
+
+```
+email:    demo@nexora.test
+password: nexora-demo-password
+```
+
+The seed creates Nexora Technologies in Gujarat, six customers across four states, eight products across four GST slabs, and twelve invoices covering paid, part paid, unpaid, overdue, draft and void. It refuses to run when `NODE_ENV=production` and refuses to overwrite an existing demo user.
+
+### Scripts
 
 | Command | What it does |
 | --- | --- |
-| `npm run dev:api` | API only, with reload |
-| `npm run dev:web` | Web app only |
+| `npm run dev` | API and web together |
+| `npm run dev:api` | API with reload |
+| `npm run dev:web` | Web app |
 | `npm run dev:mobile` | Expo dev server |
-| `npm run typecheck` | TypeScript across shared, server, web, mobile |
+| `npm run seed` | Create demo data |
+| `npm run typecheck` | TypeScript across every workspace |
 | `npm run lint` | ESLint with type-aware rules |
 | `npm run format` | Prettier write |
-| `npm test` | Vitest in every workspace |
+| `npm test` | Vitest everywhere |
 | `npm run build` | Production build of shared, server and web |
 
-Check the API by hand:
+## API in one screen
+
+Base path `/api/v1`. Amounts are integer paise. Every business record is scoped to the business inside the access token.
 
 ```bash
-curl http://localhost:4000/health
-curl http://localhost:4000/api/v1/health
-curl http://localhost:4000/api/v1/nope
+# Register, mobile style so the refresh token comes back in the body
+curl -X POST http://localhost:4000/api/v1/auth/register \
+  -H "Content-Type: application/json" -H "X-Client-Platform: mobile" \
+  -d '{"name":"Demo Owner","email":"demo2@nexora.test","password":"correct-horse-battery","businessName":"Demo Studio","stateCode":"24"}'
+
+# Everything else uses the access token
+curl http://localhost:4000/api/v1/customers -H "Authorization: Bearer $TOKEN"
+
+# Raise and issue an invoice
+curl -X POST http://localhost:4000/api/v1/invoices -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"customerId":"...","invoiceDate":"2026-10-24","dueDate":"2026-11-08","lineItems":[{"description":"Website redesign","quantityMilli":1000,"unitPriceMinor":2500000,"taxRateBp":1800}]}'
+
+curl -X POST http://localhost:4000/api/v1/invoices/INVOICE_ID/issue -H "Authorization: Bearer $TOKEN"
+
+# Record a part payment, idempotently
+curl -X POST http://localhost:4000/api/v1/invoices/INVOICE_ID/payments \
+  -H "Authorization: Bearer $TOKEN" -H "Idempotency-Key: demo-key-0001" \
+  -H "Content-Type: application/json" \
+  -d '{"amountMinor":1000000,"paidAt":"2026-10-24","method":"upi","reference":"UPI/1234"}'
 ```
 
-The last one returns the error envelope with a 404 and a matching `requestId`.
-
-### Mobile on a device
-
-`localhost` means the phone itself, so the mobile `.env` needs a different host:
-
-| Target | `EXPO_PUBLIC_API_URL` |
-| --- | --- |
-| Android emulator | `http://10.0.2.2:4000/api/v1` |
-| iOS simulator | `http://localhost:4000/api/v1` |
-| Physical phone on the same Wi-Fi | `http://192.168.x.x:4000/api/v1` |
-
-The API already binds `0.0.0.0`, so a phone on the same network can reach it. On Windows, allow Node through the firewall for private networks the first time.
+[docs/08-api-reference.md](docs/08-api-reference.md) lists every endpoint.
 
 ## Verified
 
-Run on 2026-10-24 on Windows 11, Node 22.20.0, npm 11.19.1.
+Last run on 2026-10-24 on Windows 11, Node 22.20.0, npm 11.19.1, MongoDB 8.2.6 from `mongodb-memory-server`.
 
 | Check | Result |
 | --- | --- |
-| `npm run typecheck` | passes in shared, server, web and mobile |
+| `npm run typecheck` | passes in shared, server, web, mobile |
 | `npm run lint` | passes, no warnings |
-| `npm run format:check` | passes, 100 character width |
-| `npm test` | 78 tests pass: 62 shared, 12 server, 4 web |
-| `npm run build` | server emits `dist`, web emits a 227 kB bundle, 71 kB gzipped |
-| `GET /health` | returns 200 with service, version, environment and uptime |
-| Web shell | renders, calls the API, shows Connected when the API is up |
+| `npm run format:check` | passes |
+| `npm test` | 207 tests: 62 shared, 141 server, 4 web |
+| Server suite | real HTTP through Supertest against a real MongoDB process |
+| `npm run seed` | 6 customers, 8 products, 12 invoices, 1 void, 1 draft, 3 overdue |
+| `npm run build` | server emits `dist`, web bundle builds |
 
-Versions in use: TypeScript 6.0.3, React 19.3, Vite 8.3, Vitest 5.0, Express 5.3, Zod 4.6, Tailwind 4.3, Expo 58, React Native 0.88.
+What the server suite proves, among 141 tests:
 
-TypeScript stays on 6.0 rather than 7.0 because `typescript-eslint` supports `<6.1.0`. Once it supports 7, the bump is a two-line change.
+- Register, login, refresh rotation, refresh reuse detection, logout, logout-all, password change invalidating live tokens.
+- Two accounts cannot see, edit, delete or bill each other's records. Cross tenant access returns 404.
+- A token whose role was downgraded in the database is refused, because the role is read per request instead of trusted from the token.
+- Invoice totals equal the line items to the paisa, IGST applies across states, discounts are taken before tax.
+- 20 concurrent issue requests produce 20 unique sequential numbers.
+- A repeated Idempotency-Key returns the same payment and charges once, including when both requests arrive together.
+- Overpayment returns 409 with the current balance, and the balance is never left inconsistent.
+- A void restores the balance and allows the invoice to be paid again.
+
+Not verified: the mobile app has not run on a device or emulator yet, and no PDF has been generated. Stage 5 and Stage 6.
+
+## Money rules
+
+Amounts are integer paise. Quantities are integer thousandths, so 1.5 units is `1500`. Rates are integer basis points, so 18% is `1800`. Calculations run through `BigInt` and round once per step, half away from zero.
+
+`computeLineItem` computes gross, discount, taxable value and tax in that order, per line. Invoice totals are sums of already rounded lines, which is why the lines always add up to the printed total. CGST takes the rounded half and SGST the remainder, so an odd paisa cannot make the split disagree with the line tax.
+
+The server recomputes every total on create, update and issue. A request that includes `totals`, `status` or `invoiceNumber` is rejected, not silently corrected.
+
+Calendar dates are stored at UTC midnight and compared as UTC, so a due date cannot shift by a day because of a time zone.
+
+## Security notes
+
+- Passwords use argon2id at 19 MiB, time cost 2.
+- Access tokens are 15 minute HS256 JWTs. Refresh tokens are 32 random bytes, stored as SHA-256 hashes, rotated on every use, and a replayed token revokes the whole family.
+- Web refresh tokens live in an `httpOnly`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Mobile stores its refresh token in SecureStore and sends it with `X-Client-Platform: mobile`.
+- Rate limits: 300/min per IP, 10 login attempts per 15 minutes, 5 registrations per hour, plus a 15 minute lock per email after 5 failed passwords.
+- Logs redact authorization headers, cookies and tokens.
+- 404 is returned for another tenant's records so the API does not confirm they exist.
+- No `sanitizeFilter`. It rewrites `{ $gte: x }` into `{ $eq: { $gte: x } }` and broke the conditional balance update. Filters are built server side from validated primitives, never from a client object.
+
+## Known limitations
+
+- Rate limits and login lockouts are per process, so a multi instance deployment needs a shared store.
+- No email sending. Password reset returns 503 `MAIL_NOT_CONFIGURED` rather than pretending.
+- No payment gateway. Payments are recorded manually.
+- No transactions. Payment consistency uses one atomic conditional update and a compensating delete; the reasoning is in `docs/03-architecture.md`.
+- `npm audit` reports 5 high advisories inside `@expo/cli` only. The API's Zod is 4.6.7, above the fixed version. `audit fix --force` would downgrade Expo to 54, so it is documented rather than applied.
+- Server tests take about two minutes because each suite talks to a real MongoDB.
 
 ## Repo layout
 
@@ -115,43 +187,9 @@ TypeScript stays on 6.0 rather than 7.0 because `typescript-eslint` supports `<6
 apps/web        React + Vite + Tailwind web app
 apps/mobile     Expo React Native app
 packages/shared Zod schemas, types, money and tax math
-server          Express API, Mongoose models, PDF
+server          Express API, Mongoose models, OpenAPI
 docs            Requirements, architecture, data model, API, roadmap
 ```
-
-## How the money engine works
-
-Amounts are integer paise. Quantities are integer thousandths, so 1.5 units is `1500`. Rates are integer basis points, so 18% is `1800`. Every calculation runs through `BigInt` and rounds once per step, half away from zero.
-
-`computeLineItem` computes gross, discount, taxable value and tax in that order, per line. Invoice totals are sums of already-rounded line values, which is why the lines always add up to the printed total. The CGST half is rounded and SGST takes the remainder, so an odd paisa cannot make the split disagree with the line tax.
-
-The web app and the mobile app call the same functions, so the number in the browser is the number the API will store.
-
-## Known dependency advisories
-
-`npm audit` reports 5 high severity advisories. All of them are inside `@expo/cli`, the Expo build tool: `node-forge@1.4.0`, `@expo/code-signing-certificates`, and a nested `zod@3.25.76`. None of them ship in the app bundle or the API runtime. The API's own Zod is 4.6.7, above the advisory's fixed version.
-
-`npm audit fix --force` resolves them by downgrading Expo from 58 to 54, which would break the mobile app. Not applied. Revisit when Expo updates its CLI dependencies.
-
-## Design decisions
-
-Money as integers rather than floats, because float rupees drift by a paisa and then the PDF disagrees with the database.
-
-Server-computed totals, because a client that can send a total can send the wrong one.
-
-Overdue derived from due date and balance instead of stored, so it cannot go stale.
-
-Payments by atomic conditional update on the invoice document instead of a transaction, so local development does not need a replica set.
-
-Snapshots on issue, so editing a customer never rewrites an old invoice.
-
-Invoice numbers from a per-business, per-fiscal-year counter updated with `$inc` under a unique index.
-
-Tenant isolation by taking `businessId` only from the access token and filtering every query on it. Cross-tenant access returns 404.
-
-## Not built yet
-
-Authentication, MongoDB models, all business screens, PDF generation, and deployment. No email sending, no payment gateway, no offline editing. Rate limiting is in memory, so it assumes one API instance.
 
 ## Licence
 
