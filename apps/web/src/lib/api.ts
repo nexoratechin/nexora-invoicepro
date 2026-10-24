@@ -219,6 +219,39 @@ export async function registerRequest(input: {
   return payload;
 }
 
+/**
+ * Fetches the PDF with the bearer token and hands the browser a blob. The token
+ * never appears in a URL, and a 401 goes through the same refresh as the rest.
+ */
+export async function downloadInvoicePdf(invoiceId: string, filename: string): Promise<void> {
+  const path = `/invoices/${invoiceId}/pdf`;
+  let response = await send(path);
+
+  if (response.status === 401 && accessToken !== null) {
+    try {
+      await refreshSession();
+      response = await send(path);
+    } catch {
+      accessToken = null;
+    }
+  }
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function logoutRequest(): Promise<void> {
   try {
     await send('/auth/logout', { method: 'POST', body: '{}' });

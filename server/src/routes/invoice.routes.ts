@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import { getAuth, requireAuth, requireRole } from '../middleware/auth.js';
+import { pdfLimiter } from '../middleware/rate-limit.js';
 import { objectIdSchema } from '../schemas/common.schemas.js';
 import {
   createInvoiceSchema,
@@ -11,6 +12,7 @@ import {
 import { recordPaymentSchema } from '../schemas/payment.schemas.js';
 import * as invoiceService from '../services/invoice.service.js';
 import * as paymentService from '../services/payment.service.js';
+import { pdfFilename, renderInvoicePdf } from '../services/pdf.service.js';
 
 export const invoiceRouter: Router = Router();
 
@@ -79,6 +81,20 @@ invoiceRouter.post('/:id/duplicate', async (req, res) => {
   const invoice = await invoiceService.duplicateInvoice(auth.businessId, auth.userId, id);
 
   res.status(201).json({ invoice });
+});
+
+invoiceRouter.get('/:id/pdf', pdfLimiter, async (req, res) => {
+  const auth = getAuth(req);
+  const id = objectIdSchema.parse(req.params.id);
+  const invoice = await invoiceService.getInvoiceDocument(auth.businessId, id);
+  const pdf = await renderInvoicePdf(invoice);
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${pdfFilename(invoice)}"`);
+  res.setHeader('Content-Length', String(pdf.length));
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.send(pdf);
 });
 
 invoiceRouter.get('/:id/events', async (req, res) => {

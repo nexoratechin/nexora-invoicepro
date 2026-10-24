@@ -6,7 +6,7 @@ Built by [Nexora Technologies](https://github.com/nexoratechin). Innovate | Auto
 
 ## Status
 
-Stage 5 of 9 is complete. Web and mobile both talk to the same API.
+Stage 6 of 9 is complete. Invoices render to a real PDF, from the server, for web and mobile.
 
 Working today:
 
@@ -18,10 +18,11 @@ Working today:
 - Dashboard and five reports built from stored records.
 - A React web app covering every screen: sign in, register, dashboard, customers, products, invoice editor with live totals, invoice detail with payments and history, reports, settings, not found.
 - An Expo React Native app with tab navigation, secure token storage, and the invoice loop on a phone.
+- A server rendered PDF invoice with the tax breakdown, amount in words, bank details, a void watermark and page numbers. Downloaded on web, shared from mobile.
 - OpenAPI 3.1 document and Swagger UI.
 - A seed script that creates a labelled demo business.
 
-Not built yet: the PDF, deployment, and a device test of the mobile build. Those are Stages 6 to 8.
+Not built yet: deployment, the accessibility and security sweep, and a device test of the mobile build. Those are Stages 7 and 8.
 
 ## Documentation
 
@@ -186,6 +187,17 @@ The access token is held in memory only. A page load calls `POST /auth/refresh`,
 The editor previews totals with the same shared functions the server uses, so the number on screen is the number that will be stored. The server still recomputes everything.
 
 Forms use React Hook Form with Zod schemas that mirror the server rules, through a small resolver written in this repo rather than a package that fought npm's resolver.
+## The PDF
+
+`GET /api/v1/invoices/:id/pdf` returns `application/pdf` built from the stored invoice, never from client input. The web app fetches it with the bearer token and downloads a blob; the mobile app writes it to the cache and opens the share sheet.
+
+The document carries the business and customer snapshots, the invoice number and dates, line items with HSN, quantities, rates and GST, the tax split, total, amount paid, balance, the amount in words, bank details, terms, notes and a footer with the page count. Drafts and void invoices print a watermark.
+
+Three details that matter more than they look:
+
+1. **The rupee glyph is embedded.** Noto Sans ships in `server/assets/fonts` so `₹` renders the same on every machine instead of depending on a system font. That adds about 1.1 MB of fonts to the repo.
+2. **Text is cleaned, not escaped.** pdfkit does not interpret markup, so the risk is control characters and layout, not injection. `cleanText` strips C0 controls, collapses whitespace and caps length. A test renders an invoice for a customer called `<script>alert(1)</script>`.
+3. **Page breaks are manual.** The table measures each row, starts a new page when it would cross the footer band, and redraws the header. The footer resets the bottom margin while it draws, otherwise pdfkit adds a blank page every time a footer lands inside the margin.
 ## The mobile app
 
 An Expo app with Expo Router, not a WebView. Tabs for Home, Invoices, Customers and More, with stacked screens for invoice detail and creation.

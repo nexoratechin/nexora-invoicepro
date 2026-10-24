@@ -8,7 +8,16 @@ import {
   type PaymentMethod,
 } from '@nexora/shared';
 
-import { api, errorText, type ApiCustomer, type ApiInvoice, type ApiPayment } from '../../src/api';
+import * as Sharing from 'expo-sharing';
+
+import {
+  api,
+  downloadInvoicePdf,
+  errorText,
+  type ApiCustomer,
+  type ApiInvoice,
+  type ApiPayment,
+} from '../../src/api';
 import { useAuth } from '../../src/auth';
 import { StatusPill, formatDate, invoiceTitle } from '../../src/components';
 import { colors, radius, spacing, type } from '../../src/theme';
@@ -49,6 +58,7 @@ export default function InvoiceDetailScreen() {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('upi');
   const [reason, setReason] = useState('');
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   if (loading && data === null) {
     return (
@@ -80,6 +90,29 @@ export default function InvoiceDetailScreen() {
       setFailure(errorText(cause));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function sharePdf(): Promise<void> {
+    setPdfBusy(true);
+    setFailure(null);
+
+    try {
+      const name = (invoice.invoiceNumber ?? 'draft-invoice').replace(/[^A-Za-z0-9._-]+/g, '-');
+      const uri = await downloadInvoicePdf(invoice.id, `${name}.pdf`);
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Invoice ${invoice.invoiceNumber ?? 'draft'}`,
+        });
+      } else {
+        setFailure(`Saved to ${uri}`);
+      }
+    } catch (cause) {
+      setFailure(errorText(cause));
+    } finally {
+      setPdfBusy(false);
     }
   }
 
@@ -206,6 +239,16 @@ export default function InvoiceDetailScreen() {
           }}
         />
       )}
+
+      <Button
+        label="Share PDF"
+        variant="secondary"
+        icon="share-outline"
+        loading={pdfBusy}
+        onPress={() => {
+          void sharePdf();
+        }}
+      />
 
       {invoice.status === 'issued' && (
         <Button

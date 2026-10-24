@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import type { InvoiceStatus, PaymentMethod, PaymentState, TaxTreatment } from '@nexora/shared';
 
@@ -324,6 +325,32 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+/**
+ * Downloads the server rendered PDF into the cache and returns its local URI,
+ * ready for the share sheet. The bearer token is sent as a header, never in a
+ * URL.
+ */
+export async function downloadInvoicePdf(invoiceId: string, filename: string): Promise<string> {
+  const path = `/invoices/${invoiceId}/pdf`;
+  const target = `${FileSystem.cacheDirectory ?? ''}${filename}`;
+
+  const attempt = async (): Promise<Awaited<ReturnType<typeof FileSystem.downloadAsync>>> =>
+    FileSystem.downloadAsync(`${API_BASE_URL}${path}`, target, { headers: headers() });
+
+  let result = await attempt();
+
+  if (result.status === 401) {
+    await refreshSession();
+    result = await attempt();
+  }
+
+  if (result.status !== 200) {
+    throw new ApiError('The PDF could not be generated', result.status, 'PDF_FAILED');
+  }
+
+  return result.uri;
 }
 
 export function errorText(error: unknown): string {

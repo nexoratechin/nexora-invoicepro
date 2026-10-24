@@ -51,3 +51,9 @@ export const sensitiveLimiter = jsonLimiter({
   limit: 5,
   message: 'Too many attempts. Try again in an hour.',
 });
+
+export const pdfLimiter = jsonLimiter({
+  windowMs: 5 * 60 * 1000,
+  limit: 30,
+  message: 'Too many PDF downloads. Try again in a few minutes.',
+});
