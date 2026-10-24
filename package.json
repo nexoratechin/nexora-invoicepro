@@ -1,0 +1,40 @@
+{
+  "name": "nexora-invoicepro",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Invoice and billing management system for Nexora Technologies",
+  "license": "UNLICENSED",
+  "packageManager": "npm@11.19.1",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm run build -w @nexora/shared && concurrently -n api,web -c blue,cyan \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run dev -w @nexora/server",
+    "dev:web": "npm run dev -w @nexora/web",
+    "dev:mobile": "npm run start -w @nexora/mobile",
+    "build": "npm run build -w @nexora/shared && npm run build -w @nexora/server && npm run build -w @nexora/web",
+    "typecheck": "npm run build -w @nexora/shared && npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run build -w @nexora/shared && npm run test --workspaces --if-present",
+    "test:watch": "npm run test:watch -w @nexora/shared"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "concurrently": "^10.0.6",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.0"
+  }
+}

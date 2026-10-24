@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Nexora InvoicePro",
+    "slug": "nexora-invoicepro",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "nexorainvoicepro",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A1B35"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "in.nexoratechnologies.invoicepro"
+    },
+    "android": {
+      "package": "in.nexoratechnologies.invoicepro",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A1B35",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
