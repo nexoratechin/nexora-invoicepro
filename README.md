@@ -6,7 +6,7 @@ Built by [Nexora Technologies](https://github.com/nexoratechin). Innovate | Auto
 
 ## Status
 
-Stage 7 of 9 is complete. The app is feature complete and the sweep is written up in [docs/09-test-report.md](docs/09-test-report.md). Deployment is next.
+Stage 8 is prepared: deployment configs, CI, and a smoke test that passes against a locally booted production build. The actual deploy needs the three accounts, so it is the one thing left for you. The sweep is in [docs/09-test-report.md](docs/09-test-report.md).
 
 Working today:
 
@@ -37,6 +37,7 @@ Not built yet: deployment, the accessibility and security sweep, and a device te
 | [docs/07-roadmap.md](docs/07-roadmap.md) | Nine stages with estimates |
 | [docs/08-api-reference.md](docs/08-api-reference.md) | Every endpoint as implemented, with example calls |
 | [docs/09-test-report.md](docs/09-test-report.md) | What was tested, what passed, what was not run, and the measured numbers |
+| [docs/10-deployment.md](docs/10-deployment.md) | Atlas, Render and Vercel runbook, cookie and CORS behaviour in production, rollback |
 
 ## Getting started
 
@@ -224,6 +225,25 @@ On an Android emulator `localhost` is the emulator itself, so set `EXPO_PUBLIC_A
 | Physical phone on the same Wi-Fi | `http://192.168.x.x:4000/api/v1` |
 
 The API already binds `0.0.0.0`, so a phone on the network can reach it.
+## Deployment
+
+Three pieces, prepared but not deployed. The runbook is [docs/10-deployment.md](docs/10-deployment.md).
+
+| Piece | Config in the repo | What you provide |
+| --- | --- | --- |
+| MongoDB Atlas | connection string used by the API | a free cluster and a database user |
+| API on Render | `render.yaml` (blueprint, health check, generated JWT secrets) | `MONGODB_URI`, `WEB_ORIGIN` |
+| Web on Vercel | `vercel.json` (SPA rewrite, asset caching, security headers) | `VITE_API_URL` |
+| CI | `.github/workflows/ci.yml` (typecheck, lint, format, tests) | nothing |
+| Keep warm | `.github/workflows/keepalive.yml` | repository variable `PROD_API_URL` |
+
+After deploying, prove it with the smoke script, which signs in, reads the dashboard, opens an invoice and checks the PDF:
+
+```bash
+node scripts/smoke.mjs https://your-api.onrender.com
+```
+
+One thing the runbook had to solve: the web app and the API sit on different registrable domains, so the refresh cookie is `SameSite=None; Secure` in production. Without that, every page load would log the user out. Because `None` permits cross-site requests, `/auth/refresh` and `/auth/logout` reject an `Origin` that is not in `WEB_ORIGIN`, and that guard has tests.
 ## Money rules
 
 Amounts are integer paise. Quantities are integer thousandths, so 1.5 units is `1500`. Rates are integer basis points, so 18% is `1800`. Calculations run through `BigInt` and round once per step, half away from zero.

@@ -2,6 +2,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { UserModel } from '../models/index.js';
+import { refreshCookieFlags } from '../lib/cookies.js';
 import { resetLoginAttempts } from '../services/auth.service.js';
 import { app, authHeader, registerAccount, uniqueEmail } from './helpers/api.js';
 import { clearDatabase, connectTestDb, disconnectTestDb } from './helpers/test-db.js';
@@ -369,6 +370,75 @@ describe('PATCH /me', () => {
       .set(authHeader(session))
       .send({ phone: 'call-me-maybe' })
       .expect(400);
+  });
+});
+
+describe('refresh cookie flags', () => {
+  it('is Strict in development, where app and API share a site', () => {
+    const flags = refreshCookieFlags(false);
+
+    expect(flags.sameSite).toBe('strict');
+    expect(flags.secure).toBe(false);
+    expect(flags.httpOnly).toBe(true);
+  });
+
+  it('is None with Secure in production, because the hosts are cross-site', () => {
+    const flags = refreshCookieFlags(true);
+
+    expect(flags.sameSite).toBe('none');
+    expect(flags.secure).toBe(true);
+    expect(flags.httpOnly).toBe(true);
+    expect(flags.path).toBe('/api/v1/auth');
+  });
+});
+
+describe('cross-site refresh guard', () => {
+  it('refuses a cookie refresh from an unknown origin', async () => {
+    await registerAccount();
+
+    const response = await request(app)
+      .post('/api/v1/auth/refresh')
+      .set('Origin', 'https://evil.example')
+      .expect(403);
+
+    expect(response.body.error.code).toBe('FORBIDDEN_ORIGIN');
+  });
+
+  it('allows a cookie refresh from the configured web origin', async () => {
+    const registration = await request(app)
+      .post('/api/v1/auth/register')
+      .send({
+        name: 'Web Cookie User',
+        email: uniqueEmail('cookie'),
+        password: 'a-long-password',
+        businessName: 'Cookie Studio',
+        stateCode: '24',
+      })
+      .expect(201);
+
+    const setCookie = registration.headers['set-cookie']?.[0] ?? '';
+    const cookie = setCookie.split(';')[0] ?? '';
+
+    expect(cookie).toContain('nx_rt=');
+
+    const refreshed = await request(app)
+      .post('/api/v1/auth/refresh')
+      .set('Origin', 'http://localhost:5173')
+      .set('Cookie', cookie)
+      .expect(200);
+
+    expect(refreshed.body.accessToken).toBeTypeOf('string');
+  });
+
+  it('does not apply the origin guard to the mobile flow', async () => {
+    const session = await registerAccount();
+
+    await request(app)
+      .post('/api/v1/auth/refresh')
+      .set('Origin', 'https://evil.example')
+      .set('X-Client-Platform', 'mobile')
+      .send({ refreshToken: session.refreshToken })
+      .expect(200);
   });
 });
 

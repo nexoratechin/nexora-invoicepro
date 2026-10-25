@@ -1,15 +1,26 @@
 import type { Request, Response } from 'express';
 
-import { env, isProduction } from '../config/env.js';
+import { allowedOrigins, env, isProduction } from '../config/env.js';
 
 export const REFRESH_COOKIE = 'nx_rt';
 
-const cookieOptions = {
-  httpOnly: true,
-  sameSite: 'strict' as const,
-  secure: isProduction,
-  path: '/api/v1/auth',
-};
+/**
+ * Production serves the app and the API on different registrable domains
+ * (vercel.app and onrender.com), which is cross-site. A Strict cookie would
+ * never be sent, so refresh would fail on every page load. None plus Secure is
+ * the only combination browsers accept there, and the origin guard below is
+ * what keeps it from being a CSRF hole.
+ */
+export function refreshCookieFlags(production: boolean) {
+  return {
+    httpOnly: true,
+    sameSite: production ? ('none' as const) : ('strict' as const),
+    secure: production,
+    path: '/api/v1/auth',
+  };
+}
+
+const cookieOptions = refreshCookieFlags(isProduction);
 
 export function setRefreshCookie(res: Response, token: string): void {
   res.cookie(REFRESH_COOKIE, token, {
@@ -20,6 +31,20 @@ export function setRefreshCookie(res: Response, token: string): void {
 
 export function clearRefreshCookie(res: Response): void {
   res.clearCookie(REFRESH_COOKIE, cookieOptions);
+}
+
+/**
+ * Cookie authenticated requests must come from an origin we serve. A request
+ * with no Origin header is a native client and is left to the token check.
+ */
+export function isTrustedOrigin(req: Request): boolean {
+  const origin = req.header('origin');
+
+  if (origin === undefined) {
+    return true;
+  }
+
+  return allowedOrigins.includes(origin);
 }
 
 /**
