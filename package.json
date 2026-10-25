@@ -19,6 +19,7 @@
     "dev:api": "npm run dev -w @nexora/server",
     "dev:web": "npm run dev -w @nexora/web",
     "dev:mobile": "npm run start -w @nexora/mobile",
+    "seed": "npm run seed -w @nexora/server",
     "build": "npm run build -w @nexora/shared && npm run build -w @nexora/server && npm run build -w @nexora/web",
     "typecheck": "npm run build -w @nexora/shared && npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
